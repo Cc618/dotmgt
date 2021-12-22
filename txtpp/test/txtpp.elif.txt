@@ -1,0 +1,14 @@
+Begin
+
+@define WORLD
+@if HELLO
+HELLO defined
+@elif WORLD
+1
+@elif HALLO
+2
+@else
+3
+@end
+
+End

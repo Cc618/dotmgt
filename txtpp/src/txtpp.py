@@ -23,13 +23,13 @@ def preprocess(
 ):
     line = 0
 
-    # TODO : Undef
-    # TODO : Elif
     re_comment = re.compile(r"@@.*")
     re_define = re.compile(r"@\s*define\s+(\w+)")
     re_undef = re.compile(r"@\s*undef\s+(\w+)")
     re_if = re.compile(r"@\s*if\s+(\w+)")
+    re_elif = re.compile(r"@\s*elif\s+(\w+)")
     re_ifnot = re.compile(r"@\s*ifnot\s+(\w+)")
+    re_elifnot = re.compile(r"@\s*elifnot\s+(\w+)")
     re_else = re.compile(r"@\s*else")
     re_end = re.compile(r"@\s*end")
 
@@ -38,6 +38,7 @@ def preprocess(
     while (text := file.readline()) != "":
         line += 1
         is_ifnot = False
+        is_elif = False
 
         if end_newline := text[-1] == "\n":
             text = text[:-1]
@@ -49,8 +50,13 @@ def preprocess(
         # If
         elif (
             (match := re_if.fullmatch(text)) is not None
-            or (is_ifnot := True)
-            and (match := re_ifnot.fullmatch(text)) is not None
+            or (match := re_ifnot.fullmatch(text)) is not None
+            and (is_ifnot := True)
+            or (match := re_elif.fullmatch(text)) is not None
+            and (is_elif := True)
+            or (match := re_elifnot.fullmatch(text)) is not None
+            and (is_elif := True)
+            and (is_elifnot := True)
         ):
             key = match.group(1)
 
@@ -58,11 +64,22 @@ def preprocess(
             if is_ifnot:
                 is_true = not is_true
 
-            # Push condition state
-            conditions.append(is_true)
+            if is_elif:
+                if conditions == []:
+                    raise TextPreprocessorError(file_id, line, "@elif without @if")
 
-            if debug:
-                debug_print(f"@({'Ifnot' if is_ifnot else 'If'}({key}): {is_true}")
+                conditions[-1] = not conditions[-1] and is_true
+
+                if debug:
+                    debug_print(
+                        f"@({'Elifnot' if is_ifnot else 'Elif'}({key}): {is_true}"
+                    )
+            else:
+                # Push condition state
+                conditions.append(is_true)
+
+                if debug:
+                    debug_print(f"@({'Ifnot' if is_ifnot else 'If'}({key}): {is_true}")
         # Else
         elif (match := re_else.fullmatch(text)) is not None:
             if conditions == []:
@@ -113,7 +130,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "-D", dest="definitions", action="append", help="Set definition"
     )
-    parser.add_argument("--deffile", dest="deffile", help="Set definition file, the definition file is a python file that defines a definitions iterable that contains definitions")
+    parser.add_argument(
+        "--deffile",
+        dest="deffile",
+        help="Set definition file, the definition file is a python file that defines a definitions iterable that contains definitions",
+    )
     parser.add_argument(
         "file", nargs="?", default=None, help="Input file (stdin by default)"
     )
@@ -125,7 +146,9 @@ if __name__ == "__main__":
     if args.deffile:
         import importlib
 
-        deffile = importlib.machinery.SourceFileLoader('deffile', os.path.realpath(args.deffile))
+        deffile = importlib.machinery.SourceFileLoader(
+            "deffile", os.path.realpath(args.deffile)
+        )
         deffile = deffile.load_module()
         definitions |= set(deffile.definitions)
 
