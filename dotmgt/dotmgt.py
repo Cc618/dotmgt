@@ -111,7 +111,15 @@ def update_file(user, dot, dot_id):
         return False
 
 
-def diff_all():
+def cli_help():
+    print("usage:")
+    print("dotmgt [diff | d]")
+    print("\tCompare between user config and dot files")
+    print("dotmgt [update | u]")
+    print("\tUpdate user config with dot files")
+
+
+def cli_diff():
     ret = 0
     for user, dot, dot_id in iter_conf():
         print("*", dot_id)
@@ -122,7 +130,7 @@ def diff_all():
     return ret
 
 
-def update_all():
+def cli_update():
     for user, dot, dot_id in iter_conf():
         update_file(user, dot, dot_id)
 
@@ -130,12 +138,20 @@ def update_all():
 
 
 if __name__ == "__main__":
-    # TODO : Indicate in diff that < is user file and > is config file
-    # Diff
-    diff_all()
-
-    # Update
-    # update_all()
-
-    # TODO : Fetch command that cp user to dot
-    # TODO : Push / commit / pull
+    if len(sys.argv) == 2:
+        # TODO : Indicate in diff that < is user file and > is config file
+        # TODO : Fetch command that cp user to dot
+        # TODO : Push / commit / pull
+        cmd = sys.argv[1]
+        if cmd in ("help", "h", "--help", "-h"):
+            cli_help()
+        elif cmd in ("diff", "d"):
+            cli_diff()
+        elif cmd in ("update", "u"):
+            cli_update()
+        else:
+            cli_help()
+            exit(2)
+    else:
+        cli_help()
+        exit(2)
