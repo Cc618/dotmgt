@@ -1,0 +1,6 @@
+Begin
+
+HELLO not defined
+WORLD not defined
+
+End

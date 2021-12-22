@@ -1,0 +1,9 @@
+Begin
+
+@if HELLO
+HELLO defined
+@else
+HELLO not defined
+@end
+
+End

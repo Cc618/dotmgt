@@ -1,0 +1,25 @@
+Begin
+
+@if HELLO
+@   if WORLD
+HELLO WORLD defined
+@   end
+
+HELLO defined
+
+@   ifnot WORLD
+HELLO !WORLD defined
+@   else
+HELLO WORLD defined
+@   end
+
+@else
+HELLO not defined
+@   if WORLD
+WORLD defined
+@   else
+WORLD not defined
+@   end
+@end
+
+End
