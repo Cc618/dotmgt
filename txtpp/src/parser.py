@@ -1,5 +1,8 @@
 import sys
 import traceback
+import re
+import io
+
 
 """
 # LL(1) grammar
@@ -161,26 +164,70 @@ def exec_node(node, ctx):
         raise Exception(f"Cannot execute {node.type} node")
 
 
-if __name__ == "__main__":
-    lines = [
-        Node("text", "world"),
-        Node("if", "HELLO"),
-        Node("text", "hello"),
-        Node("text", "lol"),
-        Node("elif", "WORLD"),
-        Node("elif", "WORLD2"),
-        Node("text", "okay"),
-        Node("text", "okey"),
-        Node("else"),
-        Node("text", ":thinking:"),
-        Node("end"),
-        Node("text", "ok"),
-    ]
+def lex(file: io.TextIOWrapper) -> list[str]:
+    line = 0
 
-    defs = set()
-    # defs.add("HELLO")
-    defs.add("WORLD2")
-    ctx = Context(defs)
+    re_comment = re.compile(r"@@.*")
+    re_define = re.compile(r"@\s*define\s+(\w+)")
+    re_undef = re.compile(r"@\s*undef\s+(\w+)")
+    re_if = re.compile(r"@\s*if\s+(\w+)")
+    re_elif = re.compile(r"@\s*elif\s+(\w+)")
+    re_ifnot = re.compile(r"@\s*ifnot\s+(\w+)")
+    re_elifnot = re.compile(r"@\s*elifnot\s+(\w+)")
+    re_else = re.compile(r"@\s*else")
+    re_end = re.compile(r"@\s*end")
 
-    node = parse_file(Parser(lines))
-    exec_node(node, ctx)
+    lines = []
+
+    while (text := file.readline()) != "":
+        line += 1
+
+        if end_newline := text[-1] == "\n":
+            text = text[:-1]
+
+        # Comment
+        if (match := re_comment.fullmatch(text)) is not None:
+            pass
+        # If
+        elif (
+            (match := re_if.fullmatch(text)) is not None and (type := 'if')
+            or (match := re_ifnot.fullmatch(text)) is not None
+            and (type := 'ifnot')
+            or (match := re_elif.fullmatch(text)) is not None
+            and (type := 'elif')
+            or (match := re_elifnot.fullmatch(text)) is not None
+            and (type := 'elifnot')
+        ):
+            key = match.group(1)
+
+            node = Node(type, key)
+            lines.append(node)
+        # Else
+        elif (match := re_else.fullmatch(text)) is not None:
+            lines.append(Node('else'))
+        # End
+        elif (match := re_end.fullmatch(text)) is not None:
+            lines.append(Node('end'))
+        # Define
+        elif (match := re_define.fullmatch(text)) is not None:
+            key = match.group(1)
+
+            lines.append(Node('define', key))
+        # Undef
+        elif (match := re_undef.fullmatch(text)) is not None:
+            key = match.group(1)
+
+            lines.append(Node('undef', key))
+        else:
+            lines.append(Node('text', text))
+
+    return lines
+
+
+def parse_exec(file: io.TextIOWrapper, definitions: set[str], file_id: str):
+    lines = lex(file)
+    ast = parse_file(Parser(lines))
+
+    ctx = Context(definitions)
+
+    exec_node(ast, ctx)
