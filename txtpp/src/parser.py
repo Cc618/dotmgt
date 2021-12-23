@@ -54,7 +54,9 @@ class Parser:
         if self.lines == []:
             return None
 
-        if self.lines[-1].type == type:
+        if isinstance(type, list) and self.lines[-1].type in type:
+            return self.consume()
+        elif not isinstance(type, list) and self.lines[-1].type == type:
             return self.consume()
 
         return None
@@ -73,7 +75,10 @@ class Parser:
         return self.n_lines - len(self.lines) + 1
 
 
-first = {"lines": ("if", "ifnot", "text", "define", "undef"), "else_clause": ("else", "elifnot", "elif")}
+first = {
+    "lines": ("if", "ifnot", "text", "define", "undef"),
+    "else_clause": ("else", "elifnot", "elif"),
+}
 
 
 def parse_file(parser):
@@ -86,17 +91,13 @@ def parse_file(parser):
 
         return lines
     except Exception as e:
-        traceback.print_exc()
-
-        print(file=sys.stderr)
         print(f"At line {parser.get_line()}: ", end="", file=sys.stderr)
         if parser.is_eof():
-            print("<eof>")
+            print("<eof>", file=sys.stderr)
         else:
-            print(parser.default_lines[parser.get_line() - 1])
-        print("error:", e, file=sys.stderr)
+            print(parser.default_lines[parser.get_line() - 1], file=sys.stderr)
 
-        return None
+        raise e
 
 
 def parse_lines(parser):
@@ -146,7 +147,7 @@ def parse_condition(parser, parse_elif=False):
 
 
 def parse_line(parser):
-    if line := parser.accept("text"):
+    if line := parser.accept(["text", "define", "undef"]):
         return line
     else:
         return parse_condition(parser)
@@ -178,7 +179,8 @@ def exec_node(node, ctx):
     elif node.type == "define":
         ctx.definitions.add(node.data)
     elif node.type == "undef":
-        ctx.definitions.remove(node.data)
+        if node.data in ctx.definitions:
+            ctx.definitions.remove(node.data)
     else:
         raise Exception(f"Cannot execute {node.type} node")
 

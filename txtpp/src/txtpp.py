@@ -4,6 +4,7 @@ import re
 import sys
 import io
 import os
+import traceback
 
 
 class TextPreprocessorError(Exception):
@@ -25,6 +26,8 @@ def preprocess(
     try:
         parser.parse_exec(file, definitions)
     except Exception as e:
+        traceback.print_exc()
+
         print("Failed to parse / execute file", file_id, file=sys.stderr)
 
 
