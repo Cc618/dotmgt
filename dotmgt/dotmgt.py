@@ -147,10 +147,20 @@ def update_file(user, dot, dot_id):
 
 def cli_help():
     print("usage:")
+    print("dotmgt init")
+    print("\tInit dot files")
     print("dotmgt [diff | d]")
     print("\tCompare between user config and dot files")
     print("dotmgt [update | u]")
     print("\tUpdate user config with dot files")
+    print("dotmgt [commit | c] [<commit-message>]")
+    print("\tCommit in the dot files directory")
+    print("dotmgt [push | p] [<commit-message>]")
+    print("\tCommit and push in the dot files directory")
+    print("dotmgt pull [<commit-message>]")
+    print("\tPull in the dot files directory")
+    print()
+    print("config path:", config_path)
 
 
 def cli_diff():
@@ -171,8 +181,39 @@ def cli_update():
     print("Config updated")
 
 
+def run_cmd(args):
+    if sp.call(args, cwd=config_path) != 0:
+        raise DotManagementError('Failed to launch command ' + ' '.join(args))
+
+
+def cli_commit(msg):
+    run_cmd(['git', 'add', '--all'])
+    run_cmd(['git', 'commit', '-m', msg])
+
+
+def cli_push(msg):
+    if msg:
+        cli_commit(msg)
+
+    run_cmd(['git', 'push'])
+
+
+def cli_pull():
+    run_cmd(['git', 'pull'])
+
+
+def cli_status():
+    run_cmd(['git', 'status'])
+
+
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
+    if len(sys.argv) <= 1:
+        cli_help()
+        exit(2)
+
+    if sys.argv[1] in ("push", "p"):
+        cli_push(None if len(sys.argv) == 2 else sys.argv[2])
+    elif len(sys.argv) == 2:
         # TODO : Indicate in diff that < is user file and > is config file
         # TODO : Fetch command that cp user to dot
         # TODO : Push / commit / pull
@@ -183,9 +224,15 @@ if __name__ == "__main__":
             cli_diff()
         elif cmd in ("update", "u"):
             cli_update()
+        elif cmd in ("status", "s"):
+            cli_status()
+        elif cmd == "pull":
+            cli_pull()
         else:
             cli_help()
             exit(2)
+    elif len(sys.argv) == 3 and sys.argv[1] in ("commit", "c"):
+        cli_commit(sys.argv[2])
     else:
         cli_help()
         exit(2)
