@@ -9,16 +9,20 @@ import io
 
 file: lines
 
-condition: IF lines [else_clause] END
+condition: [IF | IFNOT] lines [else_clause] END
 else_clause:
-    ELIF lines else_clause
+    [ELIF | ELIFNOT] lines else_clause
     | ELSE lines
 
 lines: %empty
     | lines lines
 
+instruction: DEFINE
+    | UNDEF
+
 line: TEXT
     | condition
+    | instruction
 """
 
 
@@ -69,7 +73,7 @@ class Parser:
         return self.n_lines - len(self.lines) + 1
 
 
-first = {"lines": ("if", "text"), "else_clause": ("else", "elif")}
+first = {"lines": ("if", "ifnot", "text", "define", "undef"), "else_clause": ("else", "elifnot", "elif")}
 
 
 def parse_file(parser):
@@ -113,7 +117,17 @@ def parse_else_clause(parser):
 
 
 def parse_condition(parser, parse_elif=False):
-    condition = parser.expect("elif" if parse_elif else "if").data
+    lookahead_type = ["elif", "elifnot"] if parse_elif else ["if", "ifnot"]
+    lookahead = parser.peek()
+
+    if lookahead.type not in lookahead_type:
+        raise Exception(f"Failed to parse condition, got {lookahead.type} node")
+
+    parser.consume()
+
+    condition = lookahead.data
+    is_not = lookahead.type == lookahead_type[1]
+
     body = parse_lines(parser)
     if parser.peek().type != "end":
         else_clause = parse_else_clause(parser)
@@ -124,7 +138,8 @@ def parse_condition(parser, parse_elif=False):
         parser.expect("end")
 
     node = Node(
-        "condition", data={"condition": condition, "body": body, "else": else_clause}
+        "condition",
+        data={"condition": condition, "body": body, "else": else_clause, "not": is_not},
     )
 
     return node
@@ -156,10 +171,14 @@ def exec_node(node, ctx):
         for node in node.data:
             exec_node(node, ctx)
     elif node.type == "condition":
-        if ctx.is_true(node.data["condition"]):
+        if ctx.is_true(node.data["condition"]) != node.data["not"]:
             exec_node(node.data["body"], ctx)
         else:
             exec_node(node.data["else"], ctx)
+    elif node.type == "define":
+        ctx.definitions.add(node.data)
+    elif node.type == "undef":
+        ctx.definitions.remove(node.data)
     else:
         raise Exception(f"Cannot execute {node.type} node")
 
@@ -190,13 +209,14 @@ def lex(file: io.TextIOWrapper) -> list[str]:
             pass
         # If
         elif (
-            (match := re_if.fullmatch(text)) is not None and (type := 'if')
+            (match := re_if.fullmatch(text)) is not None
+            and (type := "if")
             or (match := re_ifnot.fullmatch(text)) is not None
-            and (type := 'ifnot')
+            and (type := "ifnot")
             or (match := re_elif.fullmatch(text)) is not None
-            and (type := 'elif')
+            and (type := "elif")
             or (match := re_elifnot.fullmatch(text)) is not None
-            and (type := 'elifnot')
+            and (type := "elifnot")
         ):
             key = match.group(1)
 
@@ -204,27 +224,27 @@ def lex(file: io.TextIOWrapper) -> list[str]:
             lines.append(node)
         # Else
         elif (match := re_else.fullmatch(text)) is not None:
-            lines.append(Node('else'))
+            lines.append(Node("else"))
         # End
         elif (match := re_end.fullmatch(text)) is not None:
-            lines.append(Node('end'))
+            lines.append(Node("end"))
         # Define
         elif (match := re_define.fullmatch(text)) is not None:
             key = match.group(1)
 
-            lines.append(Node('define', key))
+            lines.append(Node("define", key))
         # Undef
         elif (match := re_undef.fullmatch(text)) is not None:
             key = match.group(1)
 
-            lines.append(Node('undef', key))
+            lines.append(Node("undef", key))
         else:
-            lines.append(Node('text', text))
+            lines.append(Node("text", text))
 
     return lines
 
 
-def parse_exec(file: io.TextIOWrapper, definitions: set[str], file_id: str):
+def parse_exec(file: io.TextIOWrapper, definitions: set[str]):
     lines = lex(file)
     ast = parse_file(Parser(lines))
 

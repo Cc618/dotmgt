@@ -23,7 +23,7 @@ def preprocess(
     import parser
 
     try:
-        parser.parse_exec(file, definitions, file_id)
+        parser.parse_exec(file, definitions)
     except Exception as e:
         print("Failed to parse / execute file", file_id, file=sys.stderr)
 
