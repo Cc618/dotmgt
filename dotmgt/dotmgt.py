@@ -13,11 +13,45 @@ class DotManagementError(Exception):
         super().__init__(msg)
 
 
+def init_dot_files():
+    cwd = os.path.realpath('.')
+
+    with open(dot_config_path, 'w') as f:
+        f.write(cwd + '\n')
+
+    if not os.path.exists('.git') and os.system('git init') != 0:
+        print('Cannot initialize git repository')
+        exit(1)
+
+    with open('config.yml', 'w') as f:
+        print('# Sample config.yml for your dot files', file=f)
+        print('# files:', file=f)
+        print('#   i3: .config/i3/config', file=f)
+        print('# ignored:', file=f)
+        print('#   vimrc', file=f)
+
+    print('Initialized dot files at', cwd)
+    print('Saved config at', dot_config_path)
+    exit()
+
+
 log = lambda msg: print("-", msg)
 
+dot_config_path = os.path.expanduser('~/.config/dotmgt.conf')
 
-# TODO : Update
-config_path = "dot_files"
+# Init command
+if len(sys.argv) == 2 and sys.argv[1] == 'init':
+    init_dot_files()
+
+if not os.path.exists(dot_config_path):
+    print(f'No config found at {dot_config_path}', file=sys.stderr)
+    print('Use `dotmgt init` to initialize the dot files at the current directory', file=sys.stderr)
+
+    exit(1)
+
+with open(dot_config_path, 'r') as f:
+    config_path = f.read().strip()
+
 txtpp = "txtpp/src/txtpp.py"
 default_preproc_path = "/tmp/dotmgt"
 dot_deffile = f"{config_path}/deffile.py"
