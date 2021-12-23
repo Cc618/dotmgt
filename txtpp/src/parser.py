@@ -1,6 +1,23 @@
 import sys
 import traceback
 
+"""
+# LL(1) grammar
+
+file: lines
+
+condition: IF lines [else_clause] END
+else_clause:
+    ELIF lines else_clause
+    | ELSE lines
+
+lines: %empty
+    | lines lines
+
+line: TEXT
+    | condition
+"""
+
 
 class Node:
     def __init__(self, type, data=None):
@@ -19,7 +36,7 @@ class Parser:
 
     def peek(self):
         if self.lines == []:
-            return Node('eof')
+            return Node("eof")
 
         return self.lines[-1]
 
@@ -49,7 +66,7 @@ class Parser:
         return self.n_lines - len(self.lines) + 1
 
 
-first = {"lines": ("if", "text")}
+first = {"lines": ("if", "text"), "else_clause": ("else", "elif")}
 
 
 def parse_file(parser):
@@ -80,25 +97,28 @@ def parse_lines(parser):
     while parser.peek().type in first["lines"]:
         lines.append(parse_line(parser))
 
-    return Node('lines', lines)
+    return Node("lines", lines)
 
 
 def parse_else_clause(parser):
-    # TODO : ELIF
+    if parser.peek().type == "elif":
+        return parse_condition(parser, parse_elif=True)
+
     parser.expect("else")
 
     return parse_lines(parser)
 
 
-def parse_condition(parser):
-    condition = parser.expect("if")
+def parse_condition(parser, parse_elif=False):
+    condition = parser.expect("elif" if parse_elif else "if").data
     body = parse_lines(parser)
     if parser.peek().type != "end":
         else_clause = parse_else_clause(parser)
     else:
         else_clause = None
 
-    parser.expect("end")
+    if not parse_elif:
+        parser.expect("end")
 
     node = Node(
         "condition", data={"condition": condition, "body": body, "else": else_clause}
@@ -108,8 +128,6 @@ def parse_condition(parser):
 
 
 def parse_line(parser):
-    print("parse_line", parser.lines[-1])
-
     if line := parser.accept("text"):
         return line
     else:
@@ -118,15 +136,51 @@ def parse_line(parser):
     raise Exception("Failed to parse line")
 
 
-lines = [
-    Node("text", "world"),
-    Node("if", "HELLO"),
-    Node("text", "hello"),
-    Node("text", "lol"),
-    Node("else"),
-    Node("text", ":thinking:"),
-    Node("end"),
-    Node("text", "ok"),
-]
+class Context:
+    def __init__(self, definitions=None):
+        self.definitions = definitions or set()
 
-print(parse_file(Parser(lines)))
+    def is_true(self, definition):
+        return definition in self.definitions
+
+
+def exec_node(node, ctx):
+    if node is None:
+        pass
+    elif node.type in ("line", "text"):
+        print(node.data)
+    elif node.type == "lines":
+        for node in node.data:
+            exec_node(node, ctx)
+    elif node.type == "condition":
+        if ctx.is_true(node.data["condition"]):
+            exec_node(node.data["body"], ctx)
+        else:
+            exec_node(node.data["else"], ctx)
+    else:
+        raise Exception(f"Cannot execute {node.type} node")
+
+
+if __name__ == "__main__":
+    lines = [
+        Node("text", "world"),
+        Node("if", "HELLO"),
+        Node("text", "hello"),
+        Node("text", "lol"),
+        Node("elif", "WORLD"),
+        Node("elif", "WORLD2"),
+        Node("text", "okay"),
+        Node("text", "okey"),
+        Node("else"),
+        Node("text", ":thinking:"),
+        Node("end"),
+        Node("text", "ok"),
+    ]
+
+    defs = set()
+    # defs.add("HELLO")
+    defs.add("WORLD2")
+    ctx = Context(defs)
+
+    node = parse_file(Parser(lines))
+    exec_node(node, ctx)
