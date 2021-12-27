@@ -54,9 +54,13 @@ if not os.path.exists(dot_config_path):
 with open(dot_config_path, 'r') as f:
     config_path = f.read().strip()
 
-txtpp = "txtpp/src/txtpp.py"
+txtpp = "/usr/bin/txtpp"
 default_preproc_path = "/tmp/dotmgt"
 dot_deffile = f"{config_path}/deffile.py"
+
+
+if not os.path.exists(dot_deffile):
+    dot_deffile = None
 
 
 def convert_path(path):
@@ -132,7 +136,9 @@ def preproc_dot(dot, target=default_preproc_path):
     """
     Preprocesses the dot config file
     """
-    ret = os.system(f"'{txtpp}' --deffile '{dot_deffile}' '{dot}' > '{target}'")
+    deffile = f"--deffile '{dot_deffile}'" if dot_deffile is not None else ""
+
+    ret = os.system(f"cd '{config_path}' && '{txtpp}' {deffile} '{dot}' > '{target}'")
 
     if ret != 0:
         raise DotManagementError(f"Failed to run txtpp on {dot} (exit code: {ret})")
@@ -147,7 +153,7 @@ def diff_file(user, dot, quiet=False):
     if os.path.exists(user):
         quiet_cmd = "2>&1 > /dev/null" if quiet else ""
 
-        return os.system(f"diff --color '{user}' '{default_preproc_path}' " + quiet_cmd)
+        return os.system(f"cd '{config_path}' && diff --color '{user}' '{default_preproc_path}' " + quiet_cmd)
     else:
         if not quiet:
             print(f"{user} does not exist", file=sys.stderr)
@@ -249,11 +255,6 @@ def walk_files(path):
 
 
 if __name__ == "__main__":
-    for val in iter_conf():
-        print(val)
-
-    exit()
-
     if len(sys.argv) <= 1:
         cli_help()
         exit(2)
