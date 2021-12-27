@@ -27,6 +27,8 @@ def init_dot_files():
         print('# Sample config.yml for your dot files', file=f)
         print('# files:', file=f)
         print('#   i3: .config/i3/config', file=f)
+        print('# directories:', file=f)
+        print('#   alacritty_themes: .config/alacritty/themes', file=f)
         print('# ignored:', file=f)
         print('#   vimrc', file=f)
 
@@ -76,22 +78,46 @@ def iter_conf():
     with open(conf, "r") as f:
         conf = yaml.load(f, Loader=yaml.CLoader)
 
+    # Read config files
     files = conf["files"]
+    dirs = conf["directories"] if "directories" in conf else dict()
 
     if "ignored" in conf:
         ignored += conf["ignored"]
 
+    # Read files within config directory
+    paths = []
     for file in glob.glob(f"{config_path}/*"):
-        # Ignore directories...
-        if not os.path.isfile(file):
-            continue
-
         file_name = file[len(f"{config_path}/") :]
 
         if file_name in ignored:
             continue
 
-        if file_name not in files:
+        if os.path.isdir(file):
+            paths += walk_files(file)
+        elif os.path.isfile(file):
+            paths.append(file)
+
+    for file in paths:
+        file_name = file[len(f"{config_path}/") :]
+
+        # Wether this file is within a directory
+        subfile = '/' in file_name
+
+        # Add file within directory
+        if subfile:
+            dir_name = file_name[:file_name.index('/')]
+            subpath = file_name[file_name.index('/') + 1:]
+
+            if dir_name in dirs:
+                dir_name = dirs[dir_name]
+            else:
+                # No custom path
+                dir_name = f".config/{dir_name}"
+
+            files[file_name] = dir_name + '/' + subpath
+        elif file_name not in files:
+            # Add file at root
             path = f".{file_name}" if file_name[:1] != "." else file_name
             files[file_name] = path
 
@@ -106,7 +132,6 @@ def preproc_dot(dot, target=default_preproc_path):
     """
     Preprocesses the dot config file
     """
-    # TODO : Def file
     ret = os.system(f"'{txtpp}' --deffile '{dot_deffile}' '{dot}' > '{target}'")
 
     if ret != 0:
@@ -206,7 +231,29 @@ def cli_status():
     run_cmd(['git', 'status'])
 
 
+def walk_files(path):
+    """
+    Returns all files within a directory recursively
+
+    - If path is a file, returns a singleton list containing only path
+    """
+    if not os.path.isdir(path):
+        return [path]
+
+    paths = []
+    for dirpath, _, files in os.walk(path):
+        for f in files:
+            paths.append(dirpath + '/' + f)
+
+    return paths
+
+
 if __name__ == "__main__":
+    for val in iter_conf():
+        print(val)
+
+    exit()
+
     if len(sys.argv) <= 1:
         cli_help()
         exit(2)
