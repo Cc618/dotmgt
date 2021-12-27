@@ -19,10 +19,11 @@ lines: %empty
 
 instruction: DEFINE
     | UNDEF
+    | ERROR
 
 line: TEXT
-    | condition
     | instruction
+    | condition
 """
 
 
@@ -76,7 +77,7 @@ class Parser:
 
 
 first = {
-    "lines": ("if", "ifnot", "text", "define", "undef"),
+    "lines": ("if", "ifnot", "text", "define", "undef", "error"),
     "else_clause": ("else", "elifnot", "elif"),
 }
 
@@ -147,7 +148,7 @@ def parse_condition(parser, parse_elif=False):
 
 
 def parse_line(parser):
-    if line := parser.accept(["text", "define", "undef"]):
+    if line := parser.accept(["text", "define", "undef", "error"]):
         return line
     else:
         return parse_condition(parser)
@@ -181,6 +182,8 @@ def exec_node(node, ctx):
     elif node.type == "undef":
         if node.data in ctx.definitions:
             ctx.definitions.remove(node.data)
+    elif node.type == "error":
+        raise Exception(f"@error '{node.data}'")
     else:
         raise Exception(f"Cannot execute {node.type} node")
 
@@ -189,6 +192,7 @@ def lex(file: io.TextIOWrapper) -> list[str]:
     line = 0
 
     re_comment = re.compile(r"@@.*")
+    re_error = re.compile(r"@\s*error(\s+(.*))?")
     re_define = re.compile(r"@\s*define\s+(\w+)")
     re_undef = re.compile(r"@\s*undef\s+(\w+)")
     re_if = re.compile(r"@\s*if\s+(\w+)")
@@ -209,6 +213,14 @@ def lex(file: io.TextIOWrapper) -> list[str]:
         # Comment
         if (match := re_comment.fullmatch(text)) is not None:
             pass
+        # Error
+        elif (match := re_error.fullmatch(text)) is not None:
+            description = match.group(2)
+            if description == '':
+                description = '<no description>'
+
+            node = Node('error', description)
+            lines.append(node)
         # If
         elif (
             (match := re_if.fullmatch(text)) is not None

@@ -23,12 +23,7 @@ def preprocess(
 ):
     import parser
 
-    try:
-        parser.parse_exec(file, definitions)
-    except Exception as e:
-        traceback.print_exc()
-
-        print("Failed to parse / execute file", file_id, file=sys.stderr)
+    parser.parse_exec(file, definitions)
 
 
 if __name__ == "__main__":
@@ -64,12 +59,19 @@ if __name__ == "__main__":
         definitions |= set(args.definitions)
 
     file = sys.stdin if args.file is None else open(args.file, "r")
+    file_id = "<stdin>" if args.file is None else args.file
     try:
         preprocess(
             file,
             definitions,
-            file_id="<stdin>" if args.file is None else args.file,
+            file_id
         )
+    except:
+        traceback.print_exc()
+
+        print("Failed to parse / execute file", file_id, file=sys.stderr)
+
+        exit(3)
     finally:
         if args.file is not None:
             file.close()

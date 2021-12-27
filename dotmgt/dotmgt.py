@@ -75,7 +75,7 @@ def iter_conf():
     Iterates through all config files
     - yields user_config_path, dot_config_path, dot_file_id
     """
-    ignored = ["config.yml", "deffile.py"]
+    ignored = ["config.yml", "deffile.py", "__pycache__"]
 
     conf = f"{config_path}/config.yml"
 
