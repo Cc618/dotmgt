@@ -190,6 +190,8 @@ def cli_help():
     print("\tCommit and push in the dot files directory")
     print("dotmgt pull [<commit-message>]")
     print("\tPull in the dot files directory")
+    print("dotmgt [list | l]")
+    print("\tList every config file path")
     print()
     print("config path:", config_path)
 
@@ -237,6 +239,14 @@ def cli_status():
     run_cmd(['git', 'status'])
 
 
+def cli_list():
+    ls = lambda user, dot, dot_id: print(f'{dot_id:24s} -> {user}')
+    ls('User Path', 'Dot Path', 'Id')
+    print()
+    for user, dot, dot_id in iter_conf():
+        ls(user, dot, dot_id)
+
+
 def walk_files(path):
     """
     Returns all files within a directory recursively
@@ -276,6 +286,8 @@ if __name__ == "__main__":
             cli_status()
         elif cmd == "pull":
             cli_pull()
+        elif cmd in ("list", "l"):
+            cli_list()
         else:
             cli_help()
             exit(2)
