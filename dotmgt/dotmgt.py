@@ -168,6 +168,7 @@ def update_file(user, dot, dot_id):
     preproc_dot(dot)
 
     if diff_file(user, dot, quiet=True) != 0:
+        os.makedirs(os.path.dirname(user), exist_ok=True)
         shutil.copyfile(default_preproc_path, user)
         log(f"update: [{dot_id}] {user}")
 
@@ -263,7 +264,6 @@ def cli_backup(path):
         try:
             if os.path.exists(user):
                 dest = f'{path}/{dot_id}'
-                # print(user, '     ->     ', dest)
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
                 shutil.copyfile(user, dest)
                 print(dot_id)
