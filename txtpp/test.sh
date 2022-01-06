@@ -2,9 +2,9 @@
 
 set -e
 
-bin="$(realpath ./src/txtpp.py)"
+cd "$(dirname "$0")/test"
 
-cd test
+bin="$(realpath ../src/txtpp.py)"
 
 fail=0
 for input in txtpp.*; do
