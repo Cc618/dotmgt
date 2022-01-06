@@ -20,6 +20,7 @@ lines: %empty
 instruction: DEFINE
     | UNDEF
     | ERROR
+    | WARNING
 
 line: TEXT
     | instruction
@@ -77,7 +78,7 @@ class Parser:
 
 
 first = {
-    "lines": ("if", "ifnot", "text", "define", "undef", "error"),
+    "lines": ("if", "ifnot", "text", "define", "undef", "error", "warning"),
     "else_clause": ("else", "elifnot", "elif"),
 }
 
@@ -148,7 +149,7 @@ def parse_condition(parser, parse_elif=False):
 
 
 def parse_line(parser):
-    if line := parser.accept(["text", "define", "undef", "error"]):
+    if line := parser.accept(["text", "define", "undef", "error", "warning"]):
         return line
     else:
         return parse_condition(parser)
@@ -183,16 +184,19 @@ def exec_node(node, ctx):
         if node.data in ctx.definitions:
             ctx.definitions.remove(node.data)
     elif node.type == "error":
-        raise Exception(f"@error '{node.data}'")
+        raise Exception(f"@ERROR {node.data['line']}: {node.data['description']}")
+    elif node.type == "warning":
+        print(f"@WARNING {node.data['line']}: {node.data['description']}", file=sys.stderr)
     else:
         raise Exception(f"Cannot execute {node.type} node")
 
 
-def lex(file: io.TextIOWrapper) -> list[str]:
+def lex(file: io.TextIOWrapper, file_id: str) -> list[str]:
     line = 0
 
     re_comment = re.compile(r"@@.*")
     re_error = re.compile(r"@\s*error(\s+(.*))?")
+    re_warning = re.compile(r"@\s*warning(\s+(.*))?")
     re_define = re.compile(r"@\s*define\s+(\w+)")
     re_undef = re.compile(r"@\s*undef\s+(\w+)")
     re_if = re.compile(r"@\s*if\s+(\w+)")
@@ -213,13 +217,14 @@ def lex(file: io.TextIOWrapper) -> list[str]:
         # Comment
         if (match := re_comment.fullmatch(text)) is not None:
             pass
-        # Error
-        elif (match := re_error.fullmatch(text)) is not None:
+        # Error / warning
+        elif (match := re_error.fullmatch(text)) is not None and (is_err := True) or \
+             (match := re_warning.fullmatch(text)) is not None and not (is_err := False):
             description = match.group(2)
             if description == '':
                 description = '<no description>'
 
-            node = Node('error', description)
+            node = Node('error' if is_err else 'warning', {'description': description, 'line': f'{file_id}:{line}'})
             lines.append(node)
         # If
         elif (
@@ -258,8 +263,8 @@ def lex(file: io.TextIOWrapper) -> list[str]:
     return lines
 
 
-def parse_exec(file: io.TextIOWrapper, definitions: set[str]):
-    lines = lex(file)
+def parse_exec(file: io.TextIOWrapper, definitions: set[str], file_id: str):
+    lines = lex(file, file_id)
     ast = parse_file(Parser(lines))
 
     ctx = Context(definitions)

@@ -23,7 +23,7 @@ def preprocess(
 ):
     import parser
 
-    parser.parse_exec(file, definitions)
+    parser.parse_exec(file, definitions, file_id)
 
 
 if __name__ == "__main__":
