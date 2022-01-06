@@ -192,7 +192,7 @@ def cli_help():
     print("dotmgt pull")
     print("\tPull in the dot files directory")
     print("dotmgt [backup | b] <path>")
-    print("\tCreates a backup of the current user dot files (not within the dot files directory) at path")
+    print("\tCreate a backup of the current user dot files (not within the dot files directory) at path")
     print("dotmgt [list | l]")
     print("\tList every config file path")
     print()
