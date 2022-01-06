@@ -188,8 +188,10 @@ def cli_help():
     print("\tCommit in the dot files directory")
     print("dotmgt [push | p] [<commit-message>]")
     print("\tCommit and push in the dot files directory")
-    print("dotmgt pull [<commit-message>]")
+    print("dotmgt pull")
     print("\tPull in the dot files directory")
+    print("dotmgt [backup | b] <path>")
+    print("\tCreates a backup of the current user dot files (not within the dot files directory) at path")
     print("dotmgt [list | l]")
     print("\tList every config file path")
     print()
@@ -247,6 +249,37 @@ def cli_list():
         ls(user, dot, dot_id)
 
 
+def cli_backup(path):
+    if os.path.exists(path):
+        print(path, 'already exist', file=sys.stderr)
+
+        exit(1)
+
+    os.makedirs(path)
+
+    err = 0
+
+    for user, dot, dot_id in iter_conf():
+        try:
+            if os.path.exists(user):
+                dest = f'{path}/{dot_id}'
+                # print(user, '     ->     ', dest)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                shutil.copyfile(user, dest)
+                print(dot_id)
+            else:
+                print(f'* Warning: {dot_id} does not exist (should be at location {user})', file=sys.stderr)
+        except:
+            print(f'* Error: Failed to copy {dot_id} (at location {user})', file=sys.stderr)
+            err = 1
+
+    if err:
+        print('PARTIALY backed up at', path, file=sys.stderr)
+        exit(err)
+
+    print('> Backed up at', path)
+
+
 def walk_files(path):
     """
     Returns all files within a directory recursively
@@ -293,6 +326,8 @@ if __name__ == "__main__":
             exit(2)
     elif len(sys.argv) == 3 and sys.argv[1] in ("commit", "c"):
         cli_commit(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] in ("backup", "b"):
+        cli_backup(sys.argv[2])
     else:
         cli_help()
         exit(2)
