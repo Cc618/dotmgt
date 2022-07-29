@@ -39,7 +39,11 @@ def init_dot_files():
 
 log = lambda msg: print("-", msg)
 
-dot_config_path = os.path.expanduser('~/.config/dotmgt.conf')
+home_path = os.path.abspath(
+        os.path.expanduser('~')
+        if not 'DOTMGT_HOME_PATH' in os.environ
+        else os.environ['DOTMGT_HOME_PATH'])
+dot_config_path = home_path + '/.config/dotmgt.conf'
 
 # Init command
 if len(sys.argv) == 2 and sys.argv[1] == 'init':
@@ -48,6 +52,7 @@ if len(sys.argv) == 2 and sys.argv[1] == 'init':
 if not os.path.exists(dot_config_path):
     print(f'No config found at {dot_config_path}', file=sys.stderr)
     print('Use `dotmgt init` to initialize the dot files at the current directory', file=sys.stderr)
+    print('The home directory can be overriden by the environment variable DOTMGT_HOME_PATH (used for sudo)')
 
     exit(1)
 
@@ -67,7 +72,7 @@ def convert_path(path):
     if path[:1] == "/":
         return path
     else:
-        return os.path.expanduser(f"~/{path}")
+        return f'{home_path}/{path}'
 
 
 def iter_conf():
