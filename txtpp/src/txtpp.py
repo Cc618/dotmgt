@@ -48,6 +48,7 @@ if __name__ == "__main__":
 
     if args.deffile:
         import importlib
+        import importlib.machinery
 
         deffile = importlib.machinery.SourceFileLoader(
             "deffile", os.path.realpath(args.deffile)
